@@ -38,6 +38,38 @@ def calculate_3d_velocity( np.float64_t beta, int Nx, int Ny, int Nz  ):
     
     return V_x
 
+def calculate_field_from_spectrum( np.float64_t beta, int Nx, int Ny, int Nz  ):
+    
+    cdef np.ndarray[np.float64_t, ndim = 1] kx, ky, kz
+    cdef np.ndarray[np.float64_t, ndim = 3] Amp_K, phase3d, kx3d,ky3d,kz3d, Rk
+    cdef np.ndarray[np.complex128_t, ndim = 3] V_x
+    
+    kx = np.fft.fftfreq( Nx, d = 1.0/Nx ) 
+    ky = np.fft.fftfreq( Ny, d = 1.0/Ny ) 
+    kz = np.fft.fftfreq( Nz, d = 1.0/Nz ) 
+    
+    # just to prevent the 1 / 0 error
+    # no physical meaning
+    kx[0] = kx[1]*0.001
+    ky[0] = ky[1]*0.001
+    kz[0] = kz[1]*0.001
+
+    Amp_K = np.zeros((Nx,Ny,Nz))
+    phase3d = np.random.random((Nx,Ny,Nz)) * 3.14159 * 2.0
+    
+    kx3d,ky3d,kz3d = np.meshgrid(kx,ky,kz)
+    
+    Rk = np.sqrt( kx3d*kx3d + ky3d*ky3d + kz3d*kz3d )
+    Amp_K = Rk**( (- beta - 2.0)/2.0 ) * np.cos(phase3d)
+    
+    # this corresponds to the kmin
+    cdef double kmin = 1.0
+    Amp_K[Rk < kmin] = 0.0
+    
+    scalar_field = np.fft.fftn(Amp_K)
+    
+    return scalar_field
+
 
 def caculate_power_spectrum(V_x):
     

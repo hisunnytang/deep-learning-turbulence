@@ -42,8 +42,9 @@ def generate_dfield(gamma):
        print(filename, " exist" )
    else:
        print("creating density for beta =  {:0.2f}".format(gamma))
-       rho = generate_random_field_from_spectrum( gamma, NX, NY, NZ)
+       rho = generate_random_field_from_spectrum( gamma, NX, NY, NZ, normalize=False )
        rho = rho.real - rho.real.min()
+       rho/= rho.sum() / ( NX*NY*NZ)
  
        f = h5py.File( filename, "w" )
        f.create_dataset('density',data=rho )
@@ -92,12 +93,13 @@ def ppv_for_gamma_beta(gamma_beta ):
     print('process id :', os.getpid(), 'done with d = ', outfilename )
  
 if __name__ == '__main__':
-    pool = Pool(maxtasksperchild=1)
+    pool = Pool(6, maxtasksperchild=1)
     pool.map( generate_vfield,  beta_range  )
     pool.map( generate_dfield,  gamma_range )
     
     gamma_beta = [ gamma_range, beta_range ]
-    gamma_beta_combo = list(itertools.product(*gamma_beta) ) 
+    gamma_beta_combo = list(itertools.product(*gamma_beta))
+    np.random.shuffle( gamma_beta_combo )
     pool.map( ppv_for_gamma_beta, gamma_beta_combo  ) 
     
 

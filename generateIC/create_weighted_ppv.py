@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 from multiprocessing import Pool
 import os
+import h5py
 
 def convert_to_PPV(Dens,  V , Nx, Ny, Nv, vmin = -5.0, vmax = 5.0 ):
     ppv = np.zeros((Nx,Ny,Nv))
@@ -19,30 +20,38 @@ def convert_to_PPV(Dens,  V , Nx, Ny, Nv, vmin = -5.0, vmax = 5.0 ):
 
 
 vdata_path = './vdata'
-ddata_path  = './dens_data'
+ddata_path  = './ddata'
 
-dlist = numpy.linspace(0.1,3,200)
-vlist = numpy.linspace(1.1,4,200)
+dlist = numpy.linspace(0.1,3.0,100)
+vlist = numpy.linspace(1.1,4.0,100)
 
 def ppv_for_fixed_d(d):  
     print('parent process:', os.getppid())
     print('process id :', os.getpid(), 'with d = ', d)
     for v in vlist:
-        outfilename = "ppvdata/ppv_d={0:0.4f}_v={1:0.4f}.npy".format( d, v )
+        outfilename = "ppvdata/ppv_d={0:0.4f}_v={1:0.4f}.h5".format( d, v )
         if os.path.isfile(outfilename): 
             print(outfilename, " exisit")
         else:
             print("generating ", outfilename)
             dfilename = ddata_path + '/dens_{0:0.2f}.npy'.format(d)
             vfilename = vdata_path  + '/{0:0.2f}_3dv.npy'.format(v)
-            vdata = numpy.load(vfilename)
-            ddata = numpy.load(dfilename)
+            
+            fd = h5py.File(dfilename,'r')
+            ddata = fd['density'].values
+            fd.close()
+
+            fv = h5py.File(vfilename,'r')
+            vdata = fv['velocity'].values
+            fv.close()
+
             Nx, Ny, _ = vdata.shape
-            NVCHANNELS = 128
+            NVCHANNELS = 64
         
             ppv = convert_to_PPV( ddata, vdata, Nx, Ny, NVCHANNELS, vmin = -5.0, vmax = 5.0 )
-            numpy.save( outfilename  , ppv)
-            del ppv
+            fppv = h5py.File(outfilename, 'w')
+            fppv.create_dataset( 'ppv', data=ppv )
+            fppv.close()
     print('parent process:', os.getppid())
     print('process id :', os.getpid(), 'done with d = ', d)
  

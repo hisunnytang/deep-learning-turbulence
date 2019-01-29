@@ -93,7 +93,7 @@ def ppv_for_gamma_beta(gamma_beta ):
     print('process id :', os.getpid(), 'done with d = ', outfilename )
  
 if __name__ == '__main__':
-    pool = Pool(6, maxtasksperchild=1)
+    pool = Pool(maxtasksperchild=1)
     pool.map( generate_vfield,  beta_range  )
     pool.map( generate_dfield,  gamma_range )
     

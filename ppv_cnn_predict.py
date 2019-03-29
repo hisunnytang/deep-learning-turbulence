@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/python2
 # coding: utf-8
 
 
@@ -18,7 +18,7 @@ import glob
 import h5py
 from ppv_cnn import *
 from ppv_cnn_input import get_slices_from_ppv
-from ppv_cnn_train import model_name
+from ppv_cnn_train import model_name, PREDICT_BOTH
 import tensorflow as tf
 
 import matplotlib
@@ -56,9 +56,10 @@ def validate_on_ppv_cube( filename, N = 10000 ):
     eval_dict = { "beta_pred": [], "gamma_pred": [], "beta": [], "gamma": [] }
     for bbb in beta_predict:
         eval_dict['beta_pred'].append( bbb['beta_pred'] )
-        eval_dict['gamma_pred'].append( bbb['gamma_pred'] )
         eval_dict['beta'].append(  Y_valid["beta"][i] )
-        eval_dict['gamma'].append( Y_valid["gamma"][i])
+        if PREDICT_BOTH:
+            eval_dict['gamma_pred'].append( bbb['gamma_pred'] )
+            eval_dict['gamma'].append( Y_valid["gamma"][i])
         i += 1
 
     return beta_estimator, eval_dict, current_step
@@ -67,15 +68,16 @@ if __name__ == "__main__":
      NBETA  = 5
      NGAMMA = 5
 
-     f, axarr = plt.subplots( NBETA,NGAMMA, figsize=(10,10), gridspec_kw = {'wspace':0, 'hspace':0})
+     f, axarr = plt.subplots( NBETA,NGAMMA, figsize=(8,8), gridspec_kw = {'wspace':0, 'hspace':0}, sharex=True, sharey=True)
      for i, beta in enumerate(beta_range[:: 100//NBETA  ]):
          for j, gamma in enumerate(gamma_range[::100//NGAMMA ]):
              fn = "generateIC/ppvdata/ppv_d={0:0.4f}_v={1:0.4f}.h5".format( gamma, beta )
-             _, predictions, current_step = validate_on_ppv_cube(fn, N = 1000)
-             ax = axarr[i,j].hist( predictions['beta_pred'],color='C0', bins=beta_range)
-             ax = axarr[i,j].hist( predictions['gamma_pred'],color='C1' , bins = gamma_range)
+             _, predictions, current_step = validate_on_ppv_cube(fn, N = 500)
+             ax = axarr[i,j].hist( predictions['beta_pred'],color='C0', bins=beta_range, normed=True)
              ax = axarr[i,j].axvline( predictions['beta'][0],ls='--', color='C0',label=r'true $\beta$' )
-             ax = axarr[i,j].axvline( predictions['gamma'][0],ls='--', color='C1',label=r'true $\gamma$' )
+             if PREDICT_BOTH:
+                 ax = axarr[i,j].hist( predictions['gamma_pred'],color='C1' , bins = gamma_range, normed =True)
+                 ax = axarr[i,j].axvline( predictions['gamma'][0],ls='--', color='C1',label=r'true $\gamma$' )
      plt.tight_layout()
      plt.legend()
      f.savefig("{}_performance_on_ppv.png".format(current_step) )

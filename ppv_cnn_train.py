@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/python
 # coding: utf-8
 
 
@@ -20,23 +20,23 @@ from ppv_cnn_input import *
 import tensorflow as tf
 tf.logging.set_verbosity(tf.logging.INFO)
 
-use_two_layer = False
+USE_TWO_LAYER    = False
+USE_MEAN_SQUARED = False
+PREDICT_BOTH     = False
 
 def train_2d_cnn(datadir, model_name):
     # handcrafted training sample
 
     filenames = glob.glob( os.path.join(datadir, "*h5") )
     filenames.sort(key=os.path.getmtime) 
-    # avoid reading data that havent finished generating
-    filenames = filenames[:-12] 
 
-    X, Y = get_batch(filenames, N = 128)
+    X, Y = get_batch(filenames, N = 256)
     
     # Create the Estimator
     #gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.5, allow_growth=True)
     gpu_options = tf.GPUOptions( allow_growth=True)
     sess_config = tf.ConfigProto(gpu_options=gpu_options)
-    run_config = tf.estimator.RunConfig(session_config = sess_config)  
+    run_config = tf.estimator.RunConfig(session_config = sess_config, keep_checkpoint_max=None)  
     beta_estimator = tf.estimator.Estimator(
           model_fn=cnn_model_fn, model_dir=model_name, config=run_config)
 
@@ -52,7 +52,7 @@ def train_2d_cnn(datadir, model_name):
     train_input_fn = tf.estimator.inputs.numpy_input_fn(
         x={"x": X},
         y=Y,
-        batch_size=32,
+        batch_size=64,
         num_epochs=None,
         shuffle=True)
 
@@ -71,7 +71,7 @@ def train_2d_cnn(datadir, model_name):
     eval_results = beta_estimator.evaluate(input_fn=eval_input_fn)
     print("eval results:", eval_results)
     
-    X_valid, Y_valid = get_batch(filenames, N = 64)
+    X_valid, Y_valid = get_batch(filenames, N = 512)
     beta_estimator = tf.estimator.Estimator(
           model_fn=cnn_model_fn, model_dir=model_name, config=run_config)
     beta_input_fn = tf.estimator.inputs.numpy_input_fn(
@@ -86,39 +86,17 @@ def train_2d_cnn(datadir, model_name):
     eval_dict = { "beta_pred": [], "gamma_pred": [], "beta": [], "gamma": [] }
     for bbb in beta_predict:
         eval_dict['beta_pred'].append( bbb['beta_pred'] )
-        eval_dict['gamma_pred'].append( bbb['gamma_pred'] )
         eval_dict['beta'].append(  Y_valid["beta"][i] )
+        if PREDICT_BOTH:
+            eval_dict['gamma_pred'].append( bbb['gamma_pred'] )
         eval_dict['gamma'].append( Y_valid["gamma"][i])
         i += 1
 
    
     return beta_estimator, eval_dict, current_step
 
-def validate_on_ppv_cube( filename, N = 10000 ):
-    X_valid, Y_valid = get_batch(filenames, N = 64)
-    beta_estimator = tf.estimator.Estimator(
-          model_fn=cnn_model_fn, model_dir=model_name, config=run_config)
-    beta_input_fn = tf.estimator.inputs.numpy_input_fn(
-        x={"x": X_valid},
-        y=Y_valid,
-        num_epochs=1,
-        shuffle=False)
-    beta_predict = beta_estimator.predict(input_fn=beta_input_fn)
-    i = 0
-    
-    current_step = beta_estimator.get_variable_value("global_step")
-    eval_dict = { "beta_pred": [], "gamma_pred": [], "beta": [], "gamma": [] }
-    for bbb in beta_predict:
-        eval_dict['beta_pred'].append( bbb['beta_pred'] )
-        eval_dict['gamma_pred'].append( bbb['gamma_pred'] )
-        eval_dict['beta'].append(  Y_valid["beta"][i] )
-        eval_dict['gamma'].append( Y_valid["gamma"][i])
-        i += 1
-
-    return beta_estimator, eval_dict, current_step
-
 datadir = "/home/kwoksun2/deep-learning-turbulence/generateIC/ppvdata"
-model_name = "cnn_3layers_noisy_smoothing"
+model_name = "cnn_3layers_noisy_smoothing_beta_only"
 model_performance_dir = model_name + "_performance"
 
 
@@ -131,3 +109,5 @@ if __name__ == "__main__":
     for i in range(10000):
         estimator, eval_dict, current_step = train_2d_cnn(datadir, model_name)
         np.save( os.path.join( model_performance_dir, "{}_{}.npy".format( current_step, model_name ) ), eval_dict )
+        if (current_step % (10*5000) == 0):
+            os.system("./ppv_cnn_predict.py")

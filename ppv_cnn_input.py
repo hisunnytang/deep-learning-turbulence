@@ -69,7 +69,7 @@ def read_slices_hdf5(filename, add_noise = False, gaussian_smoothing = False):
 
             slice_index1 = np.random.randint( 0, 512 - size_of_filter)
             slice_index2 = np.random.randint( 0, 512 - elements_needed) 
-            print("filter size =", size_of_filter, "; slice_ind:", slice_index1, slice_index2)
+            #print("filter size =", size_of_filter, "; slice_ind:", slice_index1, slice_index2)
             if retain_x:
                 ppv_partial = im[ slice_index2 : slice_index2 + elements_needed , slice_index1: slice_index1+size_of_filter, :] 
                 for i in range(image.shape[1]):
@@ -81,7 +81,7 @@ def read_slices_hdf5(filename, add_noise = False, gaussian_smoothing = False):
  
     if add_noise:
         SNR = 17.0 * np.random.random_sample() + 3.0
-        print('with SNR = ', SNR)
+        #print('with SNR = ', SNR)
         noisy_image = add_gaussian_noise( image, SNR ) 
         return  noisy_image, gamma, beta
     else:
@@ -100,7 +100,7 @@ def get_batch( filenames, N = 128, dims = (64, 64)):
     count = 0
     for idx in range(N):
         filename = filenames[idx]
-        print(filename, count) 
+        #print(filename, count) 
 
         pvslice, gamma, beta = read_slices_hdf5(filename, add_noise=True,gaussian_smoothing=True)
        

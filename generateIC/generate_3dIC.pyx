@@ -21,7 +21,7 @@ def generate_random_field_from_spectrum( np.float64_t beta, int Nx, int Ny, int 
     Amp_K = np.zeros((Nx,Ny,Nz),dtype=np.complex_)
     phase3d   = np.random.random((Nx,Ny,Nz)) * 3.14159 * 2.0
     # include gaussian fluctiation
-    gauss_amp = np.random.random((Nx,Ny,Nz))     
+    gauss_amp = np.random.normal(size=(Nx,Ny,Nz))     
  
     kx3d,ky3d,kz3d = np.meshgrid(kx,ky,kz)
     

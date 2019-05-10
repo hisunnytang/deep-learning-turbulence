@@ -1,12 +1,14 @@
 import numpy as np
 cimport numpy as np
 
-def generate_random_field_from_spectrum( np.float64_t beta, int Nx, int Ny, int Nz, bint normalize = True ):
+
+
+def generate_random_field_from_spectrum( np.float64_t beta, int Nx, int Ny, int Nz ):
     
     
     cdef np.ndarray[np.float64_t, ndim = 1] kx, ky, kz
-    cdef np.ndarray[np.float64_t, ndim = 3] phase3d, gauss_amp, kx3d,ky3d,kz3d, Rk
-    cdef np.ndarray[np.complex128_t, ndim = 3] V_x, Amp_K
+    cdef np.ndarray[np.float64_t, ndim = 3] V_x, phase3d, gauss_amp, kx3d,ky3d,kz3d, Rk
+    cdef np.ndarray[np.complex128_t, ndim = 3] Amp_K
     
     kx = np.fft.fftfreq( Nx, d = 1.0/Nx ) 
     ky = np.fft.fftfreq( Ny, d = 1.0/Ny ) 
@@ -14,9 +16,9 @@ def generate_random_field_from_spectrum( np.float64_t beta, int Nx, int Ny, int 
     
     # just to prevent the 1 / 0 error
     # no physical meaning
-    kx[0] = kx[1]*1.0e-10
-    ky[0] = ky[1]*1.0e-10
-    kz[0] = kz[1]*1.0e-10
+    kx[0] = 1.0e-10
+    ky[0] = 1.0e-10
+    kz[0] = 1.0e-10
 
     Amp_K = np.zeros((Nx,Ny,Nz),dtype=np.complex_)
     phase3d   = np.random.random((Nx,Ny,Nz)) * 3.14159 * 2.0
@@ -34,17 +36,16 @@ def generate_random_field_from_spectrum( np.float64_t beta, int Nx, int Ny, int 
     
     
     # normalize the Amp_K by the average dispersion
-    if normalize:
-        Vdisp = np.ones( (Nx,Ny,Nz) )*np.sqrt( kmin**(-beta + 1) / (beta - 1.0) )
-        Amp_K = Amp_K / Vdisp * Nx*Ny*Nz
+    Amp_K *= Nx*Ny*Nz
     
 
     # inverse fft will center the velocity field 
-    V_x = np.fft.ifftn(Amp_K)
+    V_x = np.fft.ifftn(Amp_K).real
+    V_x/= 2.0 * np.pi
     
     return V_x
 
-def calculate_power_spectrum(V_x):
+def calculate_power_spectrum(V_x, int  Rkbins = 128):
     
     Pk3d = np.abs(np.fft.fftn(V_x))**2.0
     
@@ -57,7 +58,6 @@ def calculate_power_spectrum(V_x):
     
     Rk = np.sqrt( kx3d*kx3d + ky3d*ky3d + kz3d*kz3d )
     
-    Rkbins = 128
     bins   = np.linspace( np.min(Rk), np.max(Rk), Rkbins )
     dbins  = bins[1] - bins[0]
     
